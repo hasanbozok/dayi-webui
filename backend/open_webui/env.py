@@ -87,11 +87,18 @@ if "cuda_error" in locals():
 
 SRC_LOG_LEVELS = {}  # Legacy variable, do not remove
 
-WEBUI_NAME = os.environ.get("WEBUI_NAME", "Open WebUI")
-if WEBUI_NAME != "Open WebUI":
-    WEBUI_NAME += " (Open WebUI)"
+WEBUI_NAME = os.environ.get("WEBUI_NAME", "dayı-webui")
 
-WEBUI_FAVICON_URL = "https://openwebui.com/favicon.png"
+WEBUI_FAVICON_URL = "/favicon.png"
+
+# Profile Image Source Configuration
+PROFILE_IMAGE_SOURCE = os.environ.get("PROFILE_IMAGE_SOURCE", "local")
+PROFILE_IMAGE_REMOTE_URL_TEMPLATE = os.environ.get("PROFILE_IMAGE_REMOTE_URL_TEMPLATE", "")
+PROFILE_IMAGE_AUTH_TYPE = os.environ.get("PROFILE_IMAGE_AUTH_TYPE", "none")
+PROFILE_IMAGE_AUTH_CREDENTIALS = os.environ.get("PROFILE_IMAGE_AUTH_CREDENTIALS", "")
+PROFILE_IMAGE_RESPONSE_TYPE = os.environ.get("PROFILE_IMAGE_RESPONSE_TYPE", "raw")
+PROFILE_IMAGE_JSON_PATH = os.environ.get("PROFILE_IMAGE_JSON_PATH", "")
+PROFILE_IMAGE_JSON_IS_URL = os.environ.get("PROFILE_IMAGE_JSON_IS_URL", "false").lower() == "true"
 
 TRUSTED_SIGNATURE_KEY = os.environ.get("TRUSTED_SIGNATURE_KEY", "")
 

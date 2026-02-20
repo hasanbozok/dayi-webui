@@ -523,34 +523,97 @@ async def get_user_oauth_sessions_by_id(
 @router.get("/{user_id}/profile/image")
 def get_user_profile_image_by_id(user_id: str, user=Depends(get_verified_user)):
     user = Users.get_user_by_id(user_id)
-    if user:
-        if user.profile_image_url:
-            # check if it's url or base64
-            if user.profile_image_url.startswith("http"):
-                return Response(
-                    status_code=status.HTTP_302_FOUND,
-                    headers={"Location": user.profile_image_url},
-                )
-            elif user.profile_image_url.startswith("data:image"):
-                try:
-                    header, base64_data = user.profile_image_url.split(",", 1)
-                    image_data = base64.b64decode(base64_data)
-                    image_buffer = io.BytesIO(image_data)
-                    media_type = header.split(";")[0].lstrip("data:")
-
-                    return StreamingResponse(
-                        image_buffer,
-                        media_type=media_type,
-                        headers={"Content-Disposition": "inline"},
-                    )
-                except Exception as e:
-                    pass
-        return FileResponse(f"{STATIC_DIR}/user.png")
-    else:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.USER_NOT_FOUND,
         )
+
+    from open_webui.env import (
+        PROFILE_IMAGE_SOURCE,
+        PROFILE_IMAGE_REMOTE_URL_TEMPLATE,
+        PROFILE_IMAGE_AUTH_TYPE,
+        PROFILE_IMAGE_AUTH_CREDENTIALS,
+        PROFILE_IMAGE_RESPONSE_TYPE,
+        PROFILE_IMAGE_JSON_PATH,
+        PROFILE_IMAGE_JSON_IS_URL,
+    )
+
+    if PROFILE_IMAGE_SOURCE == "remote" and PROFILE_IMAGE_REMOTE_URL_TEMPLATE:
+        try:
+            import requests
+
+            url = PROFILE_IMAGE_REMOTE_URL_TEMPLATE.format(email=user.email, id=user.id)
+            headers = {}
+
+            if PROFILE_IMAGE_AUTH_TYPE == "bearer":
+                headers["Authorization"] = f"Bearer {PROFILE_IMAGE_AUTH_CREDENTIALS}"
+            elif PROFILE_IMAGE_AUTH_TYPE == "basic":
+                encoded = base64.b64encode(PROFILE_IMAGE_AUTH_CREDENTIALS.encode("utf-8")).decode("utf-8")
+                headers["Authorization"] = f"Basic {encoded}"
+            elif PROFILE_IMAGE_AUTH_TYPE == "header":
+                if ":" in PROFILE_IMAGE_AUTH_CREDENTIALS:
+                    h_name, h_val = PROFILE_IMAGE_AUTH_CREDENTIALS.split(":", 1)
+                    headers[h_name.strip()] = h_val.strip()
+
+            resp = requests.get(url, headers=headers, timeout=5)
+            if resp.status_code == 200:
+                if PROFILE_IMAGE_RESPONSE_TYPE == "raw":
+                    return Response(content=resp.content, media_type=resp.headers.get("Content-Type", "image/png"))
+
+                content = ""
+                if PROFILE_IMAGE_RESPONSE_TYPE == "base64":
+                    content = resp.text.strip()
+                elif PROFILE_IMAGE_RESPONSE_TYPE == "json":
+                    data = resp.json()
+                    keys = PROFILE_IMAGE_JSON_PATH.split(".")
+                    val = data
+                    for k in keys:
+                        if isinstance(val, dict):
+                            val = val.get(k, {})
+                        else:
+                            val = ""
+                            break
+                    if isinstance(val, str):
+                        content = val
+
+                if content:
+                    if PROFILE_IMAGE_JSON_IS_URL:
+                        return Response(status_code=status.HTTP_302_FOUND, headers={"Location": content})
+                    else:
+                        if content.startswith("data:image"):
+                            header_part, base64_data = content.split(",", 1)
+                            media_type = header_part.split(";")[0].lstrip("data:")
+                        else:
+                            base64_data = content
+                            media_type = "image/png"
+
+                        image_data = base64.b64decode(base64_data)
+                        return Response(content=image_data, media_type=media_type)
+        except Exception as e:
+            log.error(f"Failed to fetch remote profile image: {e}")
+
+    if user.profile_image_url:
+        if user.profile_image_url.startswith("http"):
+            return Response(
+                status_code=status.HTTP_302_FOUND,
+                headers={"Location": user.profile_image_url},
+            )
+        elif user.profile_image_url.startswith("data:image"):
+            try:
+                header, base64_data = user.profile_image_url.split(",", 1)
+                image_data = base64.b64decode(base64_data)
+                image_buffer = io.BytesIO(image_data)
+                media_type = header.split(";")[0].lstrip("data:")
+
+                return StreamingResponse(
+                    image_buffer,
+                    media_type=media_type,
+                    headers={"Content-Disposition": "inline"},
+                )
+            except Exception as e:
+                pass
+    return FileResponse(f"{STATIC_DIR}/user.png")
 
 
 ############################

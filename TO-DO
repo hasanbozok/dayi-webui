@@ -1,0 +1,7 @@
+1- Kullanıcı profil resmi yükleyebiliyor şu anda. Ben şöyle bir özellik istiyorum:
+Sistem yöneticisi kullanıcı profil resimlerinin nereden çekileceğini belirleyebilsin.
+Örneğin: 
+- Kullanıcı profil resimleri localde tutulsun.
+- Kullanıcı profil resimleri remote bir url'den çekilsin.
+- Remote url'den çekilecekse bu url bir env var ile belirlensin.
+- Eğer remote url'den çekilecekse kullanıcı profil resmi çekilirken bir token ile çekilsin. Bu token de env var ile belirlensin.
